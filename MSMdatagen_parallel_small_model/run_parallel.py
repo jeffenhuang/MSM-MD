@@ -13,12 +13,14 @@
 # Date        Author           Description
 # 27/07/2017  Jianfeng Huang   First submit to Github
 # 27/07/2017  Jianfeng Huang   Change the position list-positionxlist and positionylist
+#                              and add logging info
 ############################################################################
 
 #!/usr/local/bin/python
 #Authors: Laalitha Liyanage, Sungho Kim
 #Purpose: Calculate material properties of fcc system
 
+import logging
 import os
 import re
 import sys,getopt
@@ -29,7 +31,8 @@ import shutil
 #========================================================================================================================================
 #--------------------------------------------------Default setting-----------------------------------------------------------------------
 #========================================================================================================================================
-
+logging.basicConfig(filename='run_parallel.log',level=logging.DEBUG)
+logging.info('Job Start...')
 datafile="datafile"
 
 # Default lattice parameter
@@ -72,6 +75,8 @@ elif platform == "win32":
     executable = "mpiexec -n "+str(arg(sys.argv[1:]))+" lmp_mpi -sf omp -pk omp 4"
     #executable = "lmp_serial"
     print(executable)
+
+logging.info('executable command is: %s', executable)
     
 #Percentage strain and no. of points for elastic constant calculation
 perc = .1

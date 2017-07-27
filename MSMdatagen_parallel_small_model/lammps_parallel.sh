@@ -2,6 +2,8 @@
 
 export PROCS_ON_EACH_NODE=12
 
+module load compilers/intel/14.0.2
+module load mpi/intel/impi/4.1.3
 
 # ************* SGE qsub options ****************
 #Export env variables and keep current working directory
