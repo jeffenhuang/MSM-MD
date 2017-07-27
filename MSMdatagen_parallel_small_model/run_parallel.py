@@ -12,7 +12,7 @@
 #
 # Date        Author           Description
 # 27/07/2017  Jianfeng Huang   First submit to Github
-#
+# 27/07/2017  Jianfeng Huang   Change the position list-positionxlist and positionylist
 ############################################################################
 
 #!/usr/local/bin/python
@@ -93,8 +93,8 @@ templist = [873]
 pb = 9
 
 #4 the unbond block center position to the yhi of the simulation box parameter list
-positionxlist=range(299,300)
-positionylist=range(149,150)
+positionxlist=range(100,101)
+positionylist=range(4.5,5.5)
 
 #Length of vacuum for surface energy calculation
 vacuum =  15.0

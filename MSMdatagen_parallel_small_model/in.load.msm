@@ -32,7 +32,7 @@
 #
 # Date        Author           Description
 # 27/07/2017  Jianfeng Huang   First submit to Github
-#
+# 27/07/2017  Jianfeng Huang   Add a typo-a missing $ before {p1} in line 138
 ############################################################################
 
 log ./log/log.${stype}${num}.txt
@@ -135,7 +135,7 @@ run 0
 #OUTPUT
 if "${stype}==load" then "fix             stress all ave/time 1 100 1000 v_Pstrain v_Pstress file ./output/stress_strain_${stype}${num}.txt"
 
-if "${stype}==load" then "fix             def1 all print ${ndump} '{p1} ${p2} ${p3} ${p11} ${p13} ${p12} ${fm} ${fv} ${p4} ${p8} ${p9} ${p10}' file ./output/output_${stype}${num}.txt screen no"
+if "${stype}==load" then "fix             def1 all print ${ndump} '${p1} ${p2} ${p3} ${p11} ${p13} ${p12} ${fm} ${fv} ${p4} ${p8} ${p9} ${p10}' file ./output/output_${stype}${num}.txt screen no"
 
 # Use lammpstrj for Ovito
 if "${stype}==load" then "dump            config all custom ${ndump} ./dump/dump.${stype}${num}.lammpstrj id type x y z c_dis[1] c_dis[2] c_dis[3] c_dis[4]"
