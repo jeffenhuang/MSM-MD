@@ -1,0 +1,150 @@
+# Input file for uniaxial tensile loading of single crystal Nickel
+#
+# Scrip command:
+# lmp -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f
+#
+# Jianfeng Huang
+# Input varible:
+# stype: string, the simulation type
+#        This input script file include the following two type. 
+#        1, stype==load type, in this type, the simulation would be in the 
+#        tiny point with the exactly strain rate. For instance, simulate 
+#        at the strain state of 0.5% with the true strain rate same as
+#        in the lab. 
+#        2, stype==relax type, in this type, the system will be under the 
+#        fast strain rate to get the proper strain state. For example,
+#        relax from 0 to 0.5% strain state
+# num:   number, the index number of simulation. It is to distinct 
+#        the simulation progress. it will start from 1.
+# lt:    string, the load type. 
+#        the variable lt is load type, could be tensile and compress for
+#        cyclic loading
+# temp:  number, this varible is for simulation temperature, unit is K.
+# rate:  number, this varible is deformation rate. currently the deformation
+#        rate is 0.005 or nearby.
+#
+############################################################################
+
+
+############################################################################
+#
+# History
+#
+# Date        Author           Description
+# 27/07/2017  Jianfeng Huang   First submit to Github
+#
+############################################################################
+
+log ./log/log.${stype}${num}.txt
+
+# ------------------------ RESTART FROM FILE -------------------------
+if "${stype}==load && ${num}==1" then "read_restart ./restart/init.20000.restart" &
+elif "${stype}==relax" "read_restart ./restart/load${num}.20000.restart" &
+else "variable oldNum equal ${num}-1" "read_restart ./restart/relax${oldNum}.20000.restart"
+
+reset_timestep 0
+
+# ------------------------ FORCE FIELDS ------------------------------
+# EAM Potentials
+pair_style      eam/alloy
+pair_coeff      * * Mishin-Ni-Al-2009.eam.alloy Al Ni Ni Ni
+
+neighbor        2.0 bin
+neigh_modify    delay 1 every 1 exclude type 3 4
+
+# ------------------------- SETTINGS ---------------------------------
+
+if "${stype}==load" then "compute csym all centro/atom fcc"
+if "${stype}==load" then "compute peratom all pe/atom"
+if "${stype}==load" then "compute dis all dislocation 3 ${num}"
+
+variable        Pstress equal "-pxx/10000"
+variable        Pstrain equal step*ln(1.0001)/1000
+variable        systemTemperature      equal  v_temp
+variable        finalTemperature       equal  v_temp
+
+######################################
+# EQUILIBRATION
+variable        randnum equal round(random(1,1000,${num}))
+#velocity all create ${finalTemperature} ${randnum} mom yes rot no
+
+# Set thermo output
+thermo 1000
+thermo_style custom step lx ly lz press pxx pyy pzz pe temp
+
+
+# Store final cell length for strain calculations
+variable        tmp equal "lx"
+variable        Lx  equal ${tmp}
+variable        tmp equal "ly"
+variable        Ly  equal ${tmp}
+variable        tmp equal "lz"
+variable        Lz  equal ${tmp}
+print           "Initial Length, Lx: ${Lx}, Ly: ${Ly}, Lz: ${Lz}"
+
+######################################
+# DEFORMATION
+#
+# The erate is 0.001 in the experimental 
+# Max strain 1%, Min strain is -1%, load frequency is 0.025Hz, which is 40 second for a cycle.
+# Then from 0 to max strain, the strain rate is 1%/10s equal 0.001.
+# For molecular dynamics simulation command fix deform, the erate is L(t)=L0*(1+erate*dt) depends
+# on the unit. if unit is metal, the time unit is picosecond, which means a deformation of erate in
+# a picosecond.
+######################################
+if "${stype}==load" then "variable erate equal v_rate" "variable erateM equal 'v_erate'" else "variable erateM equal 0.0025" # comment out / 1.0e12'"
+
+
+if "${stype}==load" then "variable nrun equal 20000" else "variable nrun equal 20000"
+variable ndump equal v_nrun/10
+
+if "${lt}==c" then "variable eratein equal -${erateM}" &
+else "variable eratein equal ${erateM}"
+
+if "${stype}==load" then "fix load all npt temp ${systemTemperature} ${finalTemperature} 1.0 y 0.0 0.0 1 z 0.0 0.0 1 drag 1"
+
+fix             2 all temp/rescale 1 ${systemTemperature} ${finalTemperature} 3 1.0
+fix             deform all deform 1 x erate ${eratein} units box remap x
+
+#if "${stype}==load" then "fix mcswap box2 atom/swap ${randnum} 10  ${randnum} ${finalTemperature} ke no types 1 2"
+
+# Output strain and stress info to file
+# for units metal, pressure is in [bars] = 100 [kPa] = 1/10000 [GPa]
+# p2, p3, p4 are in GPa
+variable strain equal "(lx - v_Lx)/v_Lx"
+
+#compute CauchyStress all smd/ulsph/stress 
+variable p1 equal "v_strain"
+variable p2 equal "-pxx/10000"
+variable p3 equal "-pyy/10000"
+variable p4 equal "-pzz/10000"
+variable p5 equal "lx"
+variable p6 equal "ly"
+variable p7 equal "lz"
+variable p8 equal "temp"
+variable p9 equal "pe"
+variable p10 equal "ke"
+variable p11 equal "-pxy/10000"
+variable p13 equal "-pyz/10000"
+variable p12 equal "-pxz/10000"
+variable fm equal "(v_p2+v_p3+v_p4)/3" ##### Hydrostatic stress
+variable fv equal "sqrt((v_p2-v_p3)^2+(v_p3-v_p4)^2+(v_p4-v_p2)^2+6*(v_p11^2+v_p12^2+v_p13^2)/2)"
+
+run 0
+
+#OUTPUT
+if "${stype}==load" then "fix             stress all ave/time 1 100 1000 v_Pstrain v_Pstress file ./output/stress_strain_${stype}${num}.txt"
+
+if "${stype}==load" then "fix             def1 all print ${ndump} '{p1} ${p2} ${p3} ${p11} ${p13} ${p12} ${fm} ${fv} ${p4} ${p8} ${p9} ${p10}' file ./output/output_${stype}${num}.txt screen no"
+
+# Use lammpstrj for Ovito
+if "${stype}==load" then "dump            config all custom ${ndump} ./dump/dump.${stype}${num}.lammpstrj id type x y z c_dis[1] c_dis[2] c_dis[3] c_dis[4]"
+
+restart         ${nrun} ./restart/${stype}${num}.*.restart
+
+
+run     ${nrun}
+
+######################################
+# SIMULATION DONE
+print "All done"
