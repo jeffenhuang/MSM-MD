@@ -1,0 +1,206 @@
+# 3d Fatigue simulation of a crack microstate for Markov State Model(MSM) Initilize 
+#
+# The command line for this script is:
+# lmp -in in.crack.init.msm -v temp %d -v pbx %d -v pox %d -v pby %d -v poy %d
+#
+# varible input:
+# temp: number for temperature. Unit is K.
+# pbx:  number for the length of box in the x direction.
+# pox:  number for centre position of the box in x direction. For example, 
+#       The simulation box x is [xlo -100, xhi 100] 200, and box centre is 
+#       in the middle. Then, the pbx is 100.
+# pby:  number for the length of box in the y direction.
+# poy:  number for centre position of the box in y direction. For example, 
+#       The simulation box y is 20, and box centre is in the middle. Then,
+#       the pbx is 10.
+############################################################################
+
+############################################################################
+#
+# History
+#
+# Date        Author           Description
+# 28/07/2017  Jianfeng Huang   From in.init.msm
+#
+############################################################################
+
+
+############################################################################
+#
+# Variable define
+#
+############################################################################
+#Box variable
+log ./log/log.init.txt
+
+variable xLo equal -100.0
+variable xHi equal  100.0
+variable yLo equal -50.0
+variable yHi equal  50.0
+variable zLo equal -25.0
+variable zHi equal  25.0
+
+variable mil equal  0#-v_wBu
+variable mih equal  0#+v_wBu
+variable boxlo equal  v_xLo+v_pox-v_pbx
+variable boxhi equal  v_xLo+v_pox+v_pbx
+variable boxyl equal  v_yHi-v_poy-v_pby
+variable boxyh equal  v_yHi-v_poy+v_pby
+variable boxmi equal  v_xLo+v_pox
+
+#Temperature and shear stress varible
+variable systemTemperature      equal  v_temp
+variable finalTemperature       equal  v_temp
+variable shearStress1           equal -0.1
+variable shearStress2           equal  0.1
+
+#simulation variable
+variable nloop          equal 4
+variable timeStep       equal 0.001
+variable nRun           equal 20000
+variable nDump          equal v_nRun/10
+variable nHalfRun       equal v_nRun/2
+
+############################################################################
+#
+# Settings
+#
+############################################################################
+dimension       3
+boundary        p p p
+units           metal
+atom_style      atomic
+
+############################################################################
+#
+# Create geometry
+#
+############################################################################
+#define lattice type 'FCC' and lattice constant 3.572
+lattice         fcc 3.572 orient x 1 0 0 orient y 0 1 1 orient z 0 -1 1
+
+#create a region name is 'box' shape is block with the size (100, 40, 10)
+region          box1 block ${xLo} ${xHi} ${yLo} ${yHi} ${zLo} ${zHi} units box
+
+#use 2 types atoms in this simulation box
+create_box      4 box1
+
+#create 1st atom type Ni3Al in the box (gamma prime phase)
+region          box2 block ${mih} ${xHi} ${yLo} ${yHi} ${zLo} ${zHi} units box voronoi 3 3 1
+group           box2 region box2
+create_atoms    1 region box2 basis 2 2 basis 3 2 basis 4 2
+
+#create 2nd atom type Ni in the box (gamma phase)
+region          box3 block ${xLo} ${mil} ${yLo} ${yHi} ${zLo} ${zHi} units box voronoi 3 3 1
+group           box3 region box3
+lattice         fcc 3.52 orient x 1 0 0 orient y 0 1 1 orient z 0 -1 1
+create_atoms    2 region box3
+
+# EAM Potentials
+pair_style      eam/alloy
+pair_coeff      * * Mishin-Ni-Al-2009.eam.alloy Al Ni Ni Ni
+
+delete_atoms    overlap 1 all all
+
+region          box4 block ${boxlo} ${boxmi} ${boxyl} ${boxyh} ${zLo} ${zHi} units box
+region          box5 block ${boxmi} ${boxhi} ${boxyl} ${boxyh} ${zLo} ${zHi} units box
+group           box4 region box4
+group           box5 region box5
+set             group box4 type 3
+set             group box5 type 4
+
+neighbor        2.0 bin
+neigh_modify    delay 1 every 1 exclude type 3 4
+
+############################################################################
+#
+# initial velocities
+#
+############################################################################
+compute     new all temp
+compute     Pcna all cna/atom 3.52
+
+velocity    all create ${systemTemperature}  887723  temp new rot yes dist gaussian
+
+# Energy Equilibriation
+fix         1 all nve
+fix         2 all temp/rescale 100 ${systemTemperature} ${finalTemperature} 3 1.0
+
+minimize 0.0 1.0e-8 2000 100000
+
+unfix       1
+unfix       2
+fix         1 all npt temp ${systemTemperature} ${finalTemperature} 1.0 aniso 0 0 1.0
+
+############################################################################
+#
+# The initial length
+#
+############################################################################
+# Store final cell length for strain calculations
+variable        tmp equal "lx"
+variable        Lx  equal ${tmp}
+variable        tmp equal "ly"
+variable        Ly  equal ${tmp}
+variable        tmp equal "lz"
+variable        Lz  equal ${tmp}
+print           "Initial Length, Lx: ${Lx}, Ly: ${Ly}, Lz: ${Lz}"
+
+############################################################################
+#
+# compute centrosymmetric number and stress components
+#
+############################################################################
+compute 1 all centro/atom fcc
+compute peratom all stress/atom NULL
+compute 3 all cluster/atom 4
+compute p all reduce sum c_peratom[1] c_peratom[2] c_peratom[3]
+variable       press equal -(c_p[1]+c_p[2]+c_p[3])/(3*vol)
+
+thermo    100
+thermo_style custom step lx ly lz press pxx pyy pzz pe temp etotal 
+thermo_modify format 1 %5d
+thermo_modify format 2 %22.12f
+thermo_modify format 3 %22.12f
+thermo_modify format 4 %22.12f
+thermo_modify format 5 %22.12f
+
+#dump            moOut  all custom ${nDump} ./init/init.msm.lammpstrj id type xs ys zs vx vy vz fx fy fz
+
+############################################################################
+#
+# Dump Strain
+#
+############################################################################ 
+# Output strain and stress information to file.
+# For metal units, pressure is [bars] = 100 [kPa] = 1/10000 [GPa]
+# p2, p3, and p4 are in GPa
+variable                strainx equal "(lx - v_Lx) / v_Lx"
+variable                strainy equal "(ly - v_Ly) / v_Ly"
+variable                strainz equal "(lz - v_Lz) / v_Lz"
+variable                p1 equal "v_strainy"
+variable                p2 equal "-pxx/10000"
+variable                p3 equal "-pyy/10000"
+variable                p4 equal "-pzz/10000"
+variable                p5 equal "etotal"
+fix                     def1 all print ${nDump} "${p1} ${p2} ${p3} ${p4} ${p5}" file ./init/stress_comp.def1.txt screen no
+
+############################################################################
+#
+# equilibrium
+#
+############################################################################
+#min_style   cg
+#minimize    1.0e-14 1.0e-16 10000 20000
+
+dump        config all custom ${nDump} ./init/dump.config.lammpstrj id type x y z c_Pcna
+thermo      1000
+
+restart     10000 ./restart/init.*.restart
+
+timestep    0.001
+run         ${nRun}
+
+# ------------------------------------------------------------
+
+print "All done"
