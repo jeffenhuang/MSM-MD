@@ -14,6 +14,7 @@
 # 27/07/2017  Jianfeng Huang   First submit to Github
 # 27/07/2017  Jianfeng Huang   Change the position list-positionxlist and positionylist
 #                              and add logging info
+# 30/07/2017  Jianfeng Huang   Modified positionlist and parameters.
 ############################################################################
 
 #!/usr/local/bin/python
@@ -27,7 +28,7 @@ import sys,getopt
 import math
 import random
 import shutil
-#import numpy as np
+#import numpy
 #========================================================================================================================================
 #--------------------------------------------------Default setting-----------------------------------------------------------------------
 #========================================================================================================================================
@@ -76,8 +77,11 @@ elif platform == "win32":
     #executable = "lmp_serial"
     print(executable)
 
+inputfile1 = "in.crack.init.msm"
+inputfile2 = "in.crack.load.msm"
+
 logging.info('executable command is: %s', executable)
-    
+
 #Percentage strain and no. of points for elastic constant calculation
 perc = .1
 nt = 6
@@ -98,8 +102,8 @@ templist = [873]
 pb = 9
 
 #4 the unbond block center position to the yhi of the simulation box parameter list
-positionxlist=range(100,101)
-positionylist=range(4.5,5.5)
+positionxlist=[100,101]
+positionylist=[4.5,5.5]
 
 #Length of vacuum for surface energy calculation
 vacuum =  15.0
@@ -108,36 +112,36 @@ relax = "relax"
 num = 1
 tensile = "t"
 compress = "c"
-marginx = 275
-marginy = 125
+marginx = 85
+marginy = 0
 
 def FirstHalfCycle(i,pox,j,poy,temp,rate):
-    os.system("%s -in in.init.msm -v temp %d -v pbx %d -v pox %d -v pby %d -v poy %d"%(executable, temp, i, pox,j,poy))
-    os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,1,tensile, temp,rate))
-    os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,1,tensile, temp,rate))
-    os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,2,tensile, temp,rate))
-    os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,2,tensile, temp,rate))
-    os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,3,tensile, temp,rate))
+    os.system("%s -in %s -v temp %d -v pbx %d -v pox %d -v pby %d -v poy %d"%(executable, inputfile1, temp, i, pox,j,poy))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,1,tensile, temp,rate))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,1,tensile, temp,rate))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,2,tensile, temp,rate))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,2,tensile, temp,rate))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,3,tensile, temp,rate))
     
 def CycleLoad(startLoop, endLoop,rate,temp):
     for i in range(startLoop, endLoop):
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+3,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+4,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+4,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+5,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+5,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+6,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+6,compress, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+7,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+3,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+4,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+4,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+5,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+5,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+6,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+6,compress, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+7,compress, temp,rate))
 
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+7,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+8,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+8,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+9,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+9,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+10,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,relax,i*8+10,tensile, temp,rate))
-        os.system("%s -in in.load.msm -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,load,i*8+11,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+7,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+8,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+8,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+9,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+9,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+10,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+10,tensile, temp,rate))
+        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+11,tensile, temp,rate))
 
 def CheckDir():
     dirs = ["./restart", "./dump", "./log", "./output", "./init", "./config"]
@@ -148,7 +152,7 @@ def CheckDir():
 def main():
     try:
         maindir = "./data"
-        filetocopy = ["in.init.msm", "in.load.msm", "Mishin-Ni-Al-2009.eam.alloy"]
+        filetocopy = ["in.crack.init.msm", "in.crack.load.msm", "Mishin-Ni-Al-2009.eam.alloy"]
         for rate in ratelist:
             inrate = rate+0.0001*rand1
             for temp in templist:
@@ -172,6 +176,7 @@ def main():
                                     os.chdir("..")
     except:
        print("run.py -n <ncore>")
+       print(sys.exc_info())
        sys.exit(2)                                    
                                     
 
