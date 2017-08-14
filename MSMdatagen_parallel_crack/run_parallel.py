@@ -15,6 +15,7 @@
 # 27/07/2017  Jianfeng Huang   Change the position list-positionxlist and positionylist
 #                              and add logging info
 # 30/07/2017  Jianfeng Huang   Modified positionlist and parameters.
+# 11/08/2017  Jianfeng Huang   Revise for flexible cycle nodes
 ############################################################################
 
 #!/usr/local/bin/python
@@ -75,7 +76,6 @@ elif platform == "win32":
     # Windows...
     executable = "mpiexec -n "+str(arg(sys.argv[1:]))+" lmp_mpi -sf omp -pk omp 4"
     #executable = "lmp_serial"
-    print(executable)
 
 inputfile1 = "in.crack.init.msm"
 inputfile2 = "in.crack.load.msm"
@@ -91,19 +91,23 @@ rand0 = random.random()        # Random number in range [0, 1)
 rand1 = 2*rand0 - 1            # Random number in range [-1, 1)
 
 #1 deformation rate, the deformation rate is 0.002 which is a threshold for generation of hysteresis loop during MD simulation
-ratelist = [0.004]
+ratelist = [0.006]
 #rate = 0.002+0.001*rand1       # The deformation rate at the range of [0.001,0.003)
 
 #2 temperature
-templist = [873]
+templist = [973]
 #temp = 773+3*rand1             # The temperature is at 773k the range of [770,776)
 
 #3 the hight of exclusive atom with bond
 pb = 9
 
 #4 the unbond block center position to the yhi of the simulation box parameter list
-positionxlist=[100,101]
-positionylist=[4.5,5.5]
+positionxlist=[100]
+positionylist=[15,20,25]
+
+#5 Strain list
+#Strain list is the maximum strain for tensile or compress
+strainlist=[0.005,0.01,0.015]
 
 #Length of vacuum for surface energy calculation
 vacuum =  15.0
@@ -113,35 +117,50 @@ num = 1
 tensile = "t"
 compress = "c"
 marginx = 85
-marginy = 0
+marginy = [0,5,10]
 
-def FirstHalfCycle(i,pox,j,poy,temp,rate):
-    os.system("%s -in %s -v temp %d -v pbx %d -v pox %d -v pby %d -v poy %d"%(executable, inputfile1, temp, i, pox,j,poy))
-    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,1,tensile, temp,rate))
-    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,1,tensile, temp,rate))
-    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,2,tensile, temp,rate))
-    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,2,tensile, temp,rate))
-    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,3,tensile, temp,rate))
+TotalCycle=6;
+StepsInCycle=12;
+
+def GetStrain(strain,index, stepInCycle):
+    indexInCycle=index%stepInCycle
+    if indexInCycle==0:
+        indexInCycle=stepInCycle
+        
+    quartStep=int(stepInCycle/4)
     
-def CycleLoad(startLoop, endLoop,rate,temp):
-    for i in range(startLoop, endLoop):
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+3,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+4,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+4,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+5,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+5,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+6,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+6,compress, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+7,compress, temp,rate))
+    if indexInCycle<=quartStep:
+        return strain/quartStep/(1+(indexInCycle-1)*strain/quartStep)
+    elif indexInCycle<=3*quartStep:
+        return strain/quartStep/(1+(2*quartStep+1-indexInCycle)*strain/quartStep)
+    else:
+        return strain/quartStep/(1-(4*quartStep+1-indexInCycle)*strain/quartStep)
 
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+7,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+8,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+8,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+9,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+9,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+10,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,relax,i*8+10,tensile, temp,rate))
-        os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f"%(executable,inputfile2,load,i*8+11,tensile, temp,rate))
+def Initial(i,pox,j,poy,temp):
+    os.system("%s -in %s -v temp %d -v pbx %d -v pox %d -v pby %d -v poy %d"%(executable, inputfile1, temp, i, pox,j,poy))
+
+def OneStep(loadtype, stepNumber, temp,rate,strain):
+    stepstrain=GetStrain(strain, stepNumber, StepsInCycle)
+    print("***********Strain for step %d is %f"%(stepstrain, stepstrain))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f -v strain %f"%(executable,inputfile2,load,stepNumber,loadtype, temp,rate,stepstrain))
+    os.system("%s -in %s -v stype %s -v num %d -v lt %s -v temp %d -v rate %f -v strain %f"%(executable,inputfile2,relax,stepNumber,loadtype, temp,rate,stepstrain))
+
+def OneCycle(numCycle, numSteps, temp, rate, strain):
+    #step forward
+    
+    quartStep=int(numSteps/4)
+    for i in range(numCycle*numSteps+1, numCycle*numSteps+quartStep+1):
+        OneStep(tensile, i, temp, rate, strain)
+    
+    for j in range(numCycle*numSteps+quartStep+1, numCycle*numSteps+3*quartStep+1):
+        OneStep(compress, j, temp, rate, strain)
+        
+    for k in range(numCycle*numSteps+3*quartStep+1, (numCycle+1)*numSteps+1):
+        OneStep(tensile, k, temp, rate, strain)
+
+def FatigueLoad(totalCycle, numSteps, temp, rate, strain):
+    for i in range(0, totalCycle):
+        OneCycle(i, numSteps, temp, rate, strain)
 
 def CheckDir():
     dirs = ["./restart", "./dump", "./log", "./output", "./init", "./config"]
@@ -161,18 +180,20 @@ def main():
                     #for i in range(pox-marginx, pox):
                         i=pox-marginx
                         for poy in positionylist:
-                            #for j in range(poy-marginy,poy):
-                                j=poy-marginy
-                                dir=maindir+'_'+str(rate)+'_'+str(temp)+'_'+str(pox)+'_'+str(i)+'_'+str(poy)+'_'+str(j)
-                                print(dir)
-                                if not os.path.exists(dir):
-                                    os.makedirs(dir)
+                            for my in marginy: #range(poy-marginy,poy):
+                                for instrain in strainlist:
+                                    j=poy-my
+                                    dir=maindir+'_'+str(inrate)+'_'+str(intemp)+'_'+str(pox)+'_'+str(i)+'_'+str(poy)+'_'+str(j)+'_'+str(instrain)
+                                    print(dir)
+                                    if not os.path.exists(dir):
+                                        os.makedirs(dir)
+
                                     for file in filetocopy:
                                         shutil.copy2(file, dir)
                                     os.chdir(dir)
                                     CheckDir()
-                                    FirstHalfCycle(i,pox,j,poy, intemp,inrate)
-                                    CycleLoad(0,6,inrate,intemp)
+                                    Initial(i,pox,j,poy, intemp)
+                                    FatigueLoad(TotalCycle,StepsInCycle, intemp,inrate, instrain)
                                     os.chdir("..")
     except:
        print("run.py -n <ncore>")

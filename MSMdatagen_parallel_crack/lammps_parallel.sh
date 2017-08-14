@@ -1,6 +1,5 @@
 #
 
-export PROCS_ON_EACH_NODE=12
 
 module load compilers/intel/14.0.2
 module load mpi/intel/impi/4.1.3
@@ -9,7 +8,7 @@ module load mpi/intel/impi/4.1.3
 #Export env variables and keep current working directory
 #$ -V -cwd
 #Select parallel environment and number of parallel queue slots (nodes)
-#$ -pe mpi-verbose 8
+#$ -pe multiway 96 
 #$ -P huang-mdssuee.prj
 #Combine STDOUT/STDERR
 #$ -j y
@@ -19,11 +18,10 @@ module load mpi/intel/impi/4.1.3
 #$ -R y
 #Request exclusivity of each node
 #$ -ac runtime="12hours"
+#$ -l h_rt=96:00:00
 # ************** END SGE qsub options ************
 
-export NCORES=`expr $PROCS_ON_EACH_NODE \* $NSLOTS`
-export OMPI_MCA_btl=openib,self
-
+export NCORES=96
 export TMI_CONFIG=$MPI_HOME/etc64/tmi.conf
 export I_MPI_FABRICS=shm:tmi
 

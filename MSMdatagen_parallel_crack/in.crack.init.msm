@@ -21,7 +21,7 @@
 #
 # Date        Author           Description
 # 28/07/2017  Jianfeng Huang   From in.init.msm
-#
+# 11/08/2017  Jianfeng Huang   Revise parameters
 ############################################################################
 
 
@@ -37,8 +37,8 @@ variable xLo equal -100.0
 variable xHi equal  100.0
 variable yLo equal -50.0
 variable yHi equal  50.0
-variable zLo equal -25.0
-variable zHi equal  25.0
+variable zLo equal -10.0
+variable zHi equal  10.0
 
 variable mil equal  0#-v_wBu
 variable mih equal  0#+v_wBu
@@ -51,15 +51,10 @@ variable boxmi equal  v_xLo+v_pox
 #Temperature and shear stress varible
 variable systemTemperature      equal  v_temp
 variable finalTemperature       equal  v_temp
-variable shearStress1           equal -0.1
-variable shearStress2           equal  0.1
 
 #simulation variable
-variable nloop          equal 4
-variable timeStep       equal 0.001
-variable nRun           equal 20000
+variable nRun           equal 2000
 variable nDump          equal v_nRun/10
-variable nHalfRun       equal v_nRun/2
 
 ############################################################################
 #
@@ -196,7 +191,7 @@ fix                     def1 all print ${nDump} "${p1} ${p2} ${p3} ${p4} ${p5}" 
 dump        config all custom ${nDump} ./init/dump.config.lammpstrj id type x y z c_Pcna
 thermo      1000
 
-restart     10000 ./restart/init.*.restart
+restart     1000 ./restart/init.*.restart
 
 timestep    0.001
 run         ${nRun}
