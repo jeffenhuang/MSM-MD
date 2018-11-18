@@ -9,7 +9,7 @@ This repository is a Markov State Model integrated with Molecular Dynamics (MSM-
 3 python codes that automatically execute LAMMPS simulation programme, *.py
 4 and Matlab codes for MSM simulation, *.m
 
-The MD codes run on LAMMPS (LAMMPS 64-bit 20170127) which assosiated with the change of polycrystalline modelling of FCC structure, dislocation recogonition, and Peierls-Nabarro dislocation energy potential field which in repository: 
+The MD codes run on LAMMPS (LAMMPS 64-bit 20170127 and LAMMPS 64-bit 5 Nov 2016) which assosiated with the change of polycrystalline modelling of FCC structure, dislocation recogonition, and Peierls-Nabarro dislocation energy potential field which in repository: 
 
 https://github.com/jeffenhuang/lammps.git
 
